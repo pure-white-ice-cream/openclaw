@@ -5,21 +5,27 @@ FROM alpine/openclaw:latest
 LABEL maintainer="Manus Agent"
 LABEL description="OpenClaw with additional tools (gh, ffmpeg, etc.)"
 
+# 切换到 root 用户进行安装
+USER root
+
 # 安装基础工具和新增工具
 # gh: GitHub CLI
 # ffmpeg: 音视频处理工具
 # jq: JSON 处理工具
 # curl/wget: 网络工具
+# 1. 更新索引 
+# 2. 安装基础工具
+# 3. 特别注意：github-cli 在 Debian 官方源里可能叫 gh
 RUN apt-get update && apt-get install -y \
-    github-cli \
     ffmpeg \
     jq \
     curl \
     wget \
     bash \
     ca-certificates \
-    tzdata && \
-    rm -rf /var/lib/apt/lists/*
+    tzdata \
+    gh \
+    && rm -rf /var/lib/apt/lists/*
 
 # 设置工作目录
 WORKDIR /app
