@@ -10,7 +10,7 @@ LABEL description="OpenClaw with additional tools (gh, ffmpeg, etc.)"
 # ffmpeg: 音视频处理工具
 # jq: JSON 处理工具
 # curl/wget: 网络工具
-RUN apk add --no-cache \
+RUN apt-get add --no-cache \
     github-cli \
     ffmpeg \
     jq \
