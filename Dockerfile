@@ -5,6 +5,9 @@ FROM alpine/openclaw:latest
 LABEL maintainer="pure-white-ice-cream"
 LABEL description="OpenClaw with additional tools (gh, ffmpeg, etc.)"
 
+# 切换到 root 用户进行安装
+USER root
+
 # 1. 安装必要的解压工具 (假设 openclaw 内部至少有 curl)
 # 如果连 curl 都没有，我们会使用更通用的方式
 RUN (type curl >/dev/null 2>&1 || (apk add --no-cache curl || apt-get update && apt-get install -y curl || yum install -y curl))
