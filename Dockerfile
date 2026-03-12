@@ -10,7 +10,7 @@ LABEL description="OpenClaw with additional tools (gh, ffmpeg, etc.)"
 # ffmpeg: 音视频处理工具
 # jq: JSON 处理工具
 # curl/wget: 网络工具
-RUN apt-get add --no-cache \
+RUN apt-get update && apt-get install -y \
     github-cli \
     ffmpeg \
     jq \
@@ -18,7 +18,8 @@ RUN apt-get add --no-cache \
     wget \
     bash \
     ca-certificates \
-    tzdata
+    tzdata && \
+    rm -rf /var/lib/apt/lists/*
 
 # 设置工作目录
 WORKDIR /app
