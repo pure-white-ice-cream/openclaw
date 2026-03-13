@@ -3,90 +3,62 @@ name: Docker Image CI
 on:
   push:
     branches: [ "main", "dev" ]
+    tags: [ 'v*.*.*' ] # 增加对版本标签的支持
   pull_request:
     branches: [ "dev" ]
   workflow_dispatch:
 
 env:
-  # 镜像名称，您可以根据需要修改
+  REGISTRY: docker.io
   IMAGE_NAME: purewhiteicecream/openclaw
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
     steps:
-    # 1. 检出代码
-    - name: Checkout repository
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0    # 拉取完整历史
-        fetch-tags: true  # 显式拉取 tags
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    # 2. 设置镜像标签 (日期 + 短哈希，或 Git Tag)
-    - name: Set IMAGE_TAG
-      id: tag
-      run: |
-        # 获取 Git SHA 7位短哈希
-        SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
-        
-        # 获取当前日期
-        BUILD_DATE=$(date +%Y%m%d)
-        
-        # 检查当前提交是否有 Git 标签
-        if git describe --tags --exact-match HEAD 2>/dev/null; then
-          # 如果有标签，直接使用标签（不加哈希）
-          GIT_TAG=$(git describe --tags --exact-match HEAD)
-          IMAGE_TAG="${GIT_TAG}"
-        else
-          # 如果没有标签，使用日期和 SHA 确保唯一性
-          IMAGE_TAG="${BUILD_DATE}-${SHORT_SHA}"
-        fi
-        
-        echo "IMAGE_TAG=${IMAGE_TAG}" >> $GITHUB_ENV
-        echo "构建标签: ${IMAGE_TAG}"
+      # 1. 自动提取元数据和标签逻辑
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_NAME }}
+          # 策略：main 分支和 Tag 推送才更新 latest
+          tags: |
+            type=ref,event=branch,branch=dev
+            type=ref,event=branch,branch=main
+            type=semver,pattern={{version}}
+            type=sha,prefix={{date 'YYYYMMDD'}}-
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
 
-    # 3. 判断是否需要 latest 标签 (非 dev 分支推送 latest)
-    - name: Determine latest tag usage
-      run: |
-        if [ "${GITHUB_REF_NAME}" = "dev" ]; then
-          echo "PUSH_LATEST=false" >> $GITHUB_ENV
-          echo "当前分支为 dev，跳过 latest 标签"
-        else
-          echo "PUSH_LATEST=true" >> $GITHUB_ENV
-          echo "当前分支非 dev，包含 latest 标签"
-        fi
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
 
-    # 4. 设置 QEMU (用于跨平台构建)
-    - name: Set up QEMU
-      uses: docker/setup-qemu-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-    # 5. 设置 Docker Buildx
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
+      - name: Log in to Docker Hub
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_PASSWORD }}
 
-    # 6. 登录 Docker Hub
-    - name: Log in to Docker Hub
-      if: github.event_name != 'pull_request'
-      uses: docker/login-action@v3
-      with:
-        username: ${{ secrets.DOCKER_HUB_USERNAME }}
-        password: ${{ secrets.DOCKER_HUB_PASSWORD }}
-
-    # 7. 构建并推送多架构镜像 (amd64, arm64, arm/v7, 386)
-    - name: Build and push multi-arch Docker image
-      if: github.event_name != 'pull_request'
-      run: |
-        if [ "${{ env.PUSH_LATEST }}" = "true" ]; then
-          docker buildx build \
-            --platform linux/amd64,linux/arm64 \
-            --tag ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }} \
-            --tag ${{ env.IMAGE_NAME }}:latest \
-            --push \
-            .
-        else
-          docker buildx build \
-            --platform linux/amd64,linux/arm64 \
-            --tag ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }} \
-            --push \
-            .
-        fi
+      # 2. 声明式构建（自动包含多架构、标签和缓存）
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          # 启用 GitHub Actions 专用缓存后端
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
