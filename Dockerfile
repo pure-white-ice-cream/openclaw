@@ -1,5 +1,5 @@
 # 使用 openclaw 官方镜像作为基底
-FROM alpine/openclaw:2026.3.28
+FROM alpine/openclaw:2026.4.2
 
 # 设置维护者信息
 LABEL maintainer="pure-white-ice-cream"
