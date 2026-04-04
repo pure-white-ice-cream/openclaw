@@ -2,7 +2,7 @@
 
 [![Docker Build and Publish](https://github.com/pure-white-ice-cream/openclaw/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/pure-white-ice-cream/openclaw/actions/workflows/docker-publish.yml)
 
-这是一个基于 `alpine/openclaw` 的增强版镜像，集成了常用的开发和多媒体工具，旨在提供更强大的功能支持。
+这是一个基于 [`alpine/openclaw`](https://hub.docker.com/r/alpine/openclaw/tags) 的增强版镜像，集成了常用的开发和多媒体工具，旨在提供更强大的功能支持。
 
 ## 🚀 特性
 
